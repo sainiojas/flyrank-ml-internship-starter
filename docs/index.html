@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="FlyRank ML Internship Capstone — Content Refresh Opportunity Scoring: identifying visible pages that under-capture clicks using a gradient-boosted decline-risk model.">
+    <title>Content Refresh Opportunity Scoring — FlyRank ML Internship 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- ======================== HERO ======================== -->
+    <header class="hero" id="hero">
+        <div class="hero-bg"></div>
+        <div class="container hero-content">
+            <span class="hero-badge">FlyRank ML Internship 2026 — Capstone</span>
+            <h1 class="hero-title">Content Refresh<br>Opportunity Scoring</h1>
+            <p class="hero-subtitle">
+                A data-driven model for identifying visible pages that under-capture clicks,
+                enabling prioritized content review with transparent reason codes.
+            </p>
+            <div class="hero-meta">
+                <span>Ojas Saini</span>
+                <span class="dot">·</span>
+                <span>July 2026</span>
+                <span class="dot">·</span>
+                <span>Lane: Content Refresh / Decay</span>
+            </div>
+        </div>
+        <div class="scroll-cue" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M19 12l-7 7-7-7"/>
+            </svg>
+        </div>
+    </header>
+
+    <!-- ======================== ABSTRACT ======================== -->
+    <section class="section" id="abstract">
+        <div class="container">
+            <div class="section-label">Abstract</div>
+            <div class="abstract-card glass-card">
+                <p>
+                    Which existing content pages should receive a refresh review to recapture
+                    declining search visibility? We train a Random Forest classifier on 30,000
+                    anonymized content items from the FlyRank warehouse to predict decline risk,
+                    achieving <strong>0.750 ROC AUC</strong> and <strong>74.0% Precision@50</strong>
+                    on a held-out client split — a <strong>3× lift</strong> over the hand-coded
+                    baseline (24.0% Precision@50). The final ranked queue assigns transparent
+                    action codes (<em>refresh</em>, <em>refresh + review CTR</em>,
+                    <em>expand + refresh</em>, <em>monitor</em>) to each page, giving editors a
+                    prioritized, explainable starting point for content review decisions.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ======================== NAV ======================== -->
+    <nav class="toc-bar" id="toc">
+        <div class="container toc-inner">
+            <a href="#introduction" class="toc-link">Introduction</a>
+            <a href="#data" class="toc-link">Data</a>
+            <a href="#methodology" class="toc-link">Methodology</a>
+            <a href="#results" class="toc-link">Results</a>
+            <a href="#limitations" class="toc-link">Limitations</a>
+            <a href="#recommendations" class="toc-link">Recommendations</a>
+            <a href="#reproducibility" class="toc-link">Reproducibility</a>
+        </div>
+    </nav>
+
+    <!-- ======================== INTRODUCTION ======================== -->
+    <section class="section" id="introduction">
+        <div class="container">
+            <h2 class="section-title"><span class="section-num">01</span>Introduction</h2>
+            <div class="content-grid">
+                <div class="text-col">
+                    <p>
+                        Content teams managing hundreds or thousands of published pages face a
+                        recurring decision: <strong>which pages deserve a refresh review this
+                        cycle?</strong> Manual triage is slow, and blanket staleness rules
+                        (e.g. "review anything older than 6 months") generate noisy queues that
+                        overwhelm editors.
+                    </p>
+                    <p>
+                        This project frames the problem as a <strong>supervised classification
+                        task</strong>: given a page's search performance, engagement metrics,
+                        content properties, and freshness indicators, predict whether it is
+                        experiencing a <em>decline trend</em> — the signal that a refresh review
+                        is warranted.
+                    </p>
+                    <p>
+                        The output is a <strong>ranked refresh queue</strong> with reason codes
+                        that explain <em>why</em> each page appears, supporting informed editorial
+                        judgment rather than replacing it. The model is a decision-support tool,
+                        not an automatic publishing decision.
+                    </p>
+                </div>
+                <div class="highlight-card glass-card">
+                    <h3>The Decision</h3>
+                    <p>
+                        <em>"Should this page receive a content refresh review?"</em>
+                    </p>
+                    <ul>
+                        <li><strong>Unit of analysis:</strong> one content page</li>
+                        <li><strong>Output:</strong> priority score + action code</li>
+                        <li><strong>Human action:</strong> manual review &amp; editorial update</li>
+                        <li><strong>Cost of error:</strong> wasted editor time (false positive) or missed decay (false negative)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ======================== DATA ======================== -->
+    <section class="section section-alt" id="data">
+        <div class="container">
+            <h2 class="section-title"><span class="section-num">02</span>Data</h2>
+            <div class="data-stats">
+                <div class="stat-card glass-card">
+                    <div class="stat-value">30,000</div>
+                    <div class="stat-label">Content items</div>
+                </div>
+                <div class="stat-card glass-card">
+                    <div class="stat-value">32</div>
+                    <div class="stat-label">Clients (pseudonymized)</div>
+                </div>
+                <div class="stat-card glass-card">
+                    <div class="stat-value">44</div>
+                    <div class="stat-label">Columns</div>
+                </div>
+                <div class="stat-card glass-card">
+                    <div class="stat-value">54.2%</div>
+                    <div class="stat-label">Decline rate (label balance)</div>
+                </div>
+            </div>
+            <div class="content-grid">
+                <div class="text-col">
+                    <h3>Source</h3>
+                    <p>
+                        FlyRank ML Internship warehouse release v20260703 — anonymized starter
+                        dataset (<code>content_refresh_anonymized.csv</code>). One row per
+                        content item, trailing 90-day metrics window. All client identifiers are
+                        pseudonymized; no titles, URLs, domains, or keywords are present.
+                    </p>
+                    <h3>Exclusions</h3>
+                    <ul>
+                        <li>Pages with zero impressions (already invisible)</li>
+                        <li>Content younger than 90 days (insufficient history for trend)</li>
+                        <li>Duplicate <code>content_id</code> rows</li>
+                    </ul>
+                    <h3>Critical Data Gotchas</h3>
+                    <ul>
+                        <li>Rate columns are ×100 percentages (<code>ctr=0.76</code> means 0.76%, not 76%)</li>
+                        <li><code>avg_position=0</code> means "no data", not rank zero (1,205 rows)</li>
+                        <li><code>trend_direction</code> and <code>trend_pct</code> are <strong>never</strong> features — they define the label</li>
+                        <li>IDs are for grouping/splitting only, never features</li>
+                    </ul>
+                </div>
+                <div class="text-col">
+                    <h3>Feature Groups</h3>
+                    <div class="feature-table-wrap">
+                        <table class="feature-table">
+                            <thead>
+                                <tr><th>Group</th><th>Features</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Search visibility</td>
+                                    <td><code>log_impressions_90d</code>, <code>log_clicks_90d</code>, <code>avg_position</code>, <code>ctr</code>, <code>days_with_impressions</code></td>
+                                </tr>
+                                <tr>
+                                    <td>Engagement</td>
+                                    <td><code>log_sessions_90d</code>, <code>engagement_rate</code>, <code>scroll_rate</code>, <code>days_with_sessions</code></td>
+                                </tr>
+                                <tr>
+                                    <td>Content</td>
+                                    <td><code>word_count</code>, <code>char_count</code>, <code>content_age_days</code>, <code>days_since_last_update</code></td>
+                                </tr>
+                                <tr>
+                                    <td>Keyword context</td>
+                                    <td><code>search_volume</code>, <code>competition</code>, <code>cpc</code></td>
+                                </tr>
+                                <tr>
+                                    <td>AI traffic</td>
+                                    <td><code>log_ai_sessions_90d</code>, <code>ai_traffic_pct</code></td>
+                                </tr>
+                                <tr>
+                                    <td>Categorical</td>
+                                    <td><code>content_type</code>, <code>main_intent</code>, <code>competition_level</code>, tiers</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <h3>Label Definition</h3>
+                    <p>
+                        <code>is_declining_label = (trend_direction == "down")</code> — a binary
+                        indicator derived from the warehouse's 30-day trend computation.
+                        <strong>16,262 rows</strong> are labelled as declining (54.2%).
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ======================== METHODOLOGY ======================== -->
+    <section class="section" id="methodology">
+        <div class="container">
+            <h2 class="section-title"><span class="section-num">03</span>Methodology</h2>
+
+            <div class="method-flow">
+                <div class="flow-step glass-card">
+                    <div class="flow-num">1</div>
+                    <h4>Feature Engineering</h4>
+                    <p>Log-transform skewed counts, encode categoricals via one-hot, add binary flags for missing data patterns.</p>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step glass-card">
+                    <div class="flow-num">2</div>
+                    <h4>Rule Baseline</h4>
+                    <p>Weighted score from visibility, freshness risk, position opportunity, and depth gap — transparent, no ML.</p>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step glass-card">
+                    <div class="flow-num">3</div>
+                    <h4>Model Training</h4>
+                    <p>Logistic Regression, Decision Tree, and Random Forest — all with client-holdout validation split.</p>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step glass-card">
+                    <div class="flow-num">4</div>
+                    <h4>Ranked Queue</h4>
+                    <p>Blend model probability (70%) with baseline score (30%) for final priority. Assign action + reason codes.</p>
+                </div>
+            </div>
+
+            <div class="content-grid" style="margin-top: 2.5rem;">
+                <div class="text-col">
+                    <h3>Validation Design</h3>
+                    <table class="method-table">
+                        <tbody>
+                            <tr><td>Split type</td><td>Client-holdout (grouped by <code>client_id</code>)</td></tr>
+                            <tr><td>Train/test ratio</td><td>~80/20 by client count</td></tr>
+                            <tr><td>Leakage check</td><td><code>trend_direction</code>, <code>trend_pct</code> excluded from all features</td></tr>
+                            <tr><td>Selection metric</td><td>Precision@50 (cost of top-K errors matters most)</td></tr>
+                            <tr><td>Random state</td><td>42 (reproducible)</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="text-col">
+                    <h3>Baseline Formula</h3>
+                    <div class="code-block">
+<pre>baseline_score =
+    0.40 × visibility_score
+  + 0.30 × freshness_risk_score
+  + 0.25 × position_opportunity_score
+  + 0.05 × depth_gap_score</pre>
+                    </div>
+                    <p>
+                        The baseline uses only percentile ranks and hand-tuned weights — no
+                        machine learning. It serves as the "transparent rule" that the model must
+                        demonstrably beat on the same test split.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ======================== RESULTS ======================== -->
+    <section class="section section-alt" id="results">
+        <div class="container">
+            <h2 class="section-title"><span class="section-num">04</span>Results</h2>
+
+            <h3>Model Comparison</h3>
+            <p class="section-desc">All metrics computed on the same held-out client split. Best model selected by Precision@50.</p>
+
+            <div class="results-table-wrap">
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>Model</th>
+                            <th>ROC AUC</th>
+                            <th>Avg Precision</th>
+                            <th>Precision@50</th>
+                            <th>Recall</th>
+                            <th>F1</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="best-row">
+                            <td><strong>Random Forest</strong> <span class="best-badge">Best</span></td>
+                            <td>0.750</td>
+                            <td>0.618</td>
+                            <td class="highlight-cell">0.740</td>
+                            <td>0.744</td>
+                            <td>0.640</td>
+                        </tr>
+                        <tr>
+                            <td>Decision Tree</td>
+                            <td>0.742</td>
+                            <td>0.575</td>
+                            <td>0.540</td>
+                            <td>0.716</td>
+                            <td>0.634</td>
+                        </tr>
+                        <tr>
+                            <td>Logistic Regression</td>
+                            <td>0.700</td>
+                            <td>0.522</td>
+                            <td>0.400</td>
+                            <td>0.567</td>
+                            <td>0.566</td>
+                        </tr>
+                        <tr class="baseline-row">
+                            <td>Baseline (Rules)</td>
+                            <td>0.627</td>
+                            <td>0.468</td>
+                            <td>0.240</td>
+                            <td>—</td>
+                            <td>—</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="chart-grid">
+                <div class="chart-card glass-card">
+                    <h4>Precision@50 Comparison</h4>
+                    <div class="bar-chart" id="precision-chart">
+                        <div class="bar-row">
+                            <span class="bar-label">Random Forest</span>
+                            <div class="bar-track"><div class="bar-fill best" style="width: 74%"><span>74.0%</span></div></div>
+                        </div>
+                        <div class="bar-row">
+                            <span class="bar-label">Decision Tree</span>
+                            <div class="bar-track"><div class="bar-fill" style="width: 54%"><span>54.0%</span></div></div>
+                        </div>
+                        <div class="bar-row">
+                            <span class="bar-label">Logistic Regression</span>
+                            <div class="bar-track"><div class="bar-fill" style="width: 40%"><span>40.0%</span></div></div>
+                        </div>
+                        <div class="bar-row">
+                            <span class="bar-label">Baseline (Rules)</span>
+                            <div class="bar-track"><div class="bar-fill baseline" style="width: 24%"><span>24.0%</span></div></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="chart-card glass-card">
+                    <h4>Top Feature Importances</h4>
+                    <div class="bar-chart" id="importance-chart">
+                        <div class="bar-row">
+                            <span class="bar-label">days_with_impressions</span>
+                            <div class="bar-track"><div class="bar-fill feat" style="width: 100%"><span>0.158</span></div></div>
+                        </div>
+                        <div class="bar-row">
+                            <span class="bar-label">log_impressions_90d</span>
+                            <div class="bar-track"><div class="bar-fill feat" style="width: 81%"><span>0.128</span></div></div>
+                        </div>
+                        <div class="bar-row">
+                            <span class="bar-label">avg_position</span>
+                            <div class="bar-track"><div class="bar-fill feat" style="width: 69%"><span>0.109</span></div></div>
+                        </div>
+                        <div class="bar-row">
+                            <span class="bar-label">content_age_days</span>
+                            <div class="bar-track"><div class="bar-fill feat" style="width: 60%"><span>0.096</span></div></div>
+                        </div>
+                        <div class="bar-row">
+                            <span class="bar-label">char_count</span>
+                            <div class="bar-track"><div class="bar-fill feat" style="width: 27%"><span>0.043</span></div></div>
+                        </div>
+                        <div class="bar-row">
+                            <span class="bar-label">word_count</span>
+                            <div class="bar-track"><div class="bar-fill feat" style="width: 25%"><span>0.040</span></div></div>
+                        </div>
+                        <div class="bar-row">
+                            <span class="bar-label">log_clicks_90d</span>
+                            <div class="bar-track"><div class="bar-fill feat" style="width: 22%"><span>0.035</span></div></div>
+                        </div>
+                        <div class="bar-row">
+                            <span class="bar-label">ctr</span>
+                            <div class="bar-track"><div class="bar-fill feat" style="width: 21%"><span>0.033</span></div></div>
+                        </div>
+                        <div class="bar-row">
+                            <span class="bar-label">scroll_rate</span>
+                            <div class="bar-track"><div class="bar-fill feat" style="width: 20%"><span>0.031</span></div></div>
+                        </div>
+                        <div class="bar-row">
+                            <span class="bar-label">days_with_sessions</span>
+                            <div class="bar-track"><div class="bar-fill feat" style="width: 18%"><span>0.028</span></div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-grid" style="margin-top: 1.5rem;">
+                <div class="chart-card glass-card">
+                    <h4>Queue Action Mix</h4>
+                    <div class="bar-chart" id="action-chart">
+                        <div class="bar-row">
+                            <span class="bar-label">Monitor</span>
+                            <div class="bar-track"><div class="bar-fill action-a" style="width: 100%"><span>13,093</span></div></div>
+                        </div>
+                        <div class="bar-row">
+                            <span class="bar-label">Refresh</span>
+                            <div class="bar-track"><div class="bar-fill action-b" style="width: 62%"><span>8,178</span></div></div>
+                        </div>
+                        <div class="bar-row">
+                            <span class="bar-label">Refresh + CTR Review</span>
+                            <div class="bar-track"><div class="bar-fill action-c" style="width: 51%"><span>6,657</span></div></div>
+                        </div>
+                        <div class="bar-row">
+                            <span class="bar-label">Refresh + Engagement</span>
+                            <div class="bar-track"><div class="bar-fill action-d" style="width: 15%"><span>1,990</span></div></div>
+                        </div>
+                        <div class="bar-row">
+                            <span class="bar-label">Expand + Refresh</span>
+                            <div class="bar-track"><div class="bar-fill action-e" style="width: 1%"><span>82</span></div></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="chart-card glass-card">
+                    <h4>Confidence Distribution</h4>
+                    <div class="bar-chart" id="confidence-chart">
+                        <div class="bar-row">
+                            <span class="bar-label">Low</span>
+                            <div class="bar-track"><div class="bar-fill conf-low" style="width: 100%"><span>15,000</span></div></div>
+                        </div>
+                        <div class="bar-row">
+                            <span class="bar-label">Medium</span>
+                            <div class="bar-track"><div class="bar-fill conf-med" style="width: 76%"><span>11,395</span></div></div>
+                        </div>
+                        <div class="bar-row">
+                            <span class="bar-label">High</span>
+                            <div class="bar-track"><div class="bar-fill conf-high" style="width: 24%"><span>3,605</span></div></div>
+                        </div>
+                    </div>
+                    <p class="chart-note">
+                        High-confidence items are the recommended first review set — they combine
+                        high model probability, strong baseline signals, and sufficient data volume.
+                    </p>
+                </div>
+            </div>
+
+            <h3 style="margin-top: 3rem;">Interpretation</h3>
+            <div class="content-grid">
+                <div class="text-col">
+                    <p>
+                        The Random Forest model's top features are <strong>search visibility
+                        metrics</strong> — days with impressions, impression volume, and average
+                        position account for the top three importance slots. This is intuitive:
+                        pages that have been consistently visible and are slipping in rankings are
+                        the strongest candidates for refresh review.
+                    </p>
+                    <p>
+                        <strong>Content properties</strong> (age, word count, character count)
+                        form the second tier, confirming that older and thinner content is
+                        directionally associated with higher decline risk.
+                    </p>
+                </div>
+                <div class="text-col">
+                    <p>
+                        The <strong>3× Precision@50 lift</strong> over baseline (74% vs 24%)
+                        demonstrates that the model captures non-linear feature interactions that
+                        simple weighted rules miss — particularly the interplay between position,
+                        volume, and content freshness.
+                    </p>
+                    <p>
+                        The near-balanced label distribution (54.2% declining) means the base
+                        rate is high; a random ranker would achieve ~54% Precision@50. The model's
+                        74% represents meaningful lift above both random and the rule-based baseline.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ======================== LIMITATIONS ======================== -->
+    <section class="section" id="limitations">
+        <div class="container">
+            <h2 class="section-title"><span class="section-num">05</span>Limitations</h2>
+            <div class="limitations-grid">
+                <div class="limit-card glass-card">
+                    <div class="limit-icon">⚠</div>
+                    <h4>Observational, Not Causal</h4>
+                    <p>
+                        This is observational data. We measure <em>association</em> between
+                        features and decline, not causation. "Associated with decline" does not
+                        mean "causes decline."
+                    </p>
+                </div>
+                <div class="limit-card glass-card">
+                    <div class="limit-icon">⚠</div>
+                    <h4>Label Is a Proxy</h4>
+                    <p>
+                        The label (<code>trend_direction == "down"</code>) captures 30-day
+                        impression trends, not the ground truth of "needs refresh." Some declining
+                        pages may be intentionally deprecated; some stable pages may still benefit
+                        from updates.
+                    </p>
+                </div>
+                <div class="limit-card glass-card">
+                    <div class="limit-icon">⚠</div>
+                    <h4>Starter Dataset Only</h4>
+                    <p>
+                        Results are from the 30K-row anonymized starter dataset. The full
+                        warehouse (~79M daily rows) may reveal different patterns at scale.
+                        Model should be re-validated on the full release.
+                    </p>
+                </div>
+                <div class="limit-card glass-card">
+                    <div class="limit-icon">⚠</div>
+                    <h4>Single Time Snapshot</h4>
+                    <p>
+                        Training and test data come from the same trailing 90-day window.
+                        Temporal stability (does the model hold month-over-month?) is untested
+                        and should be validated before production deployment.
+                    </p>
+                </div>
+                <div class="limit-card glass-card">
+                    <div class="limit-icon">⚠</div>
+                    <h4>No Content Text</h4>
+                    <p>
+                        The model uses only structured metadata and aggregated metrics — no
+                        actual page content, titles, or semantic analysis. A richer model
+                        could use NLP features for deeper quality signals.
+                    </p>
+                </div>
+                <div class="limit-card glass-card">
+                    <div class="limit-icon">⚠</div>
+                    <h4>Decision-Support Only</h4>
+                    <p>
+                        Model output is a prioritization aid for human reviewers. It should
+                        never be used as an automatic publishing or unpublishing decision without
+                        editorial verification.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ======================== RECOMMENDATIONS ======================== -->
+    <section class="section section-alt" id="recommendations">
+        <div class="container">
+            <h2 class="section-title"><span class="section-num">06</span>Ranked Recommendations</h2>
+            <p class="section-desc">
+                The queue assigns each page one of five action codes based on model probability,
+                baseline signals, and engagement patterns. Start with high-confidence rows.
+            </p>
+
+            <div class="action-legend">
+                <div class="action-item">
+                    <span class="action-dot" style="background: #E15759"></span>
+                    <strong>refresh_and_review_ctr</strong> — High impressions, low CTR, declining. Review title/meta.
+                </div>
+                <div class="action-item">
+                    <span class="action-dot" style="background: #F28E2B"></span>
+                    <strong>refresh_and_review_engagement</strong> — Low engagement/scroll despite traffic. Review content quality.
+                </div>
+                <div class="action-item">
+                    <span class="action-dot" style="background: #4E79A7"></span>
+                    <strong>refresh</strong> — Declining or stale; general content update recommended.
+                </div>
+                <div class="action-item">
+                    <span class="action-dot" style="background: #59A14F"></span>
+                    <strong>expand_and_refresh</strong> — Thin content (&lt;1,200 words) with visibility. Expand depth.
+                </div>
+                <div class="action-item">
+                    <span class="action-dot" style="background: #8C6BB1"></span>
+                    <strong>monitor</strong> — No urgent signals; re-evaluate next cycle.
+                </div>
+            </div>
+
+            <h3>Top 10 Queue Preview</h3>
+            <div class="queue-table-wrap">
+                <table class="queue-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Score</th>
+                            <th>Model Prob.</th>
+                            <th>Confidence</th>
+                            <th>Action</th>
+                            <th>Impressions</th>
+                            <th>Sessions</th>
+                            <th>Trend</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>1</td>
+                            <td>81.6</td>
+                            <td>0.782</td>
+                            <td><span class="conf-badge high">high</span></td>
+                            <td><span class="action-badge ctr">refresh + CTR</span></td>
+                            <td>12,834</td>
+                            <td>66</td>
+                            <td><span class="trend-down">↓ down</span></td>
+                        </tr>
+                        <tr>
+                            <td>2</td>
+                            <td>81.4</td>
+                            <td>0.788</td>
+                            <td><span class="conf-badge high">high</span></td>
+                            <td><span class="action-badge ctr">refresh + CTR</span></td>
+                            <td>8,064</td>
+                            <td>23</td>
+                            <td><span class="trend-down">↓ down</span></td>
+                        </tr>
+                        <tr>
+                            <td>3</td>
+                            <td>81.4</td>
+                            <td>0.847</td>
+                            <td><span class="conf-badge med">medium</span></td>
+                            <td><span class="action-badge ctr">refresh + CTR</span></td>
+                            <td>2,498</td>
+                            <td>9</td>
+                            <td><span class="trend-down">↓ down</span></td>
+                        </tr>
+                        <tr>
+                            <td>4</td>
+                            <td>81.0</td>
+                            <td>0.774</td>
+                            <td><span class="conf-badge high">high</span></td>
+                            <td><span class="action-badge ctr">refresh + CTR</span></td>
+                            <td>13,790</td>
+                            <td>27</td>
+                            <td><span class="trend-down">↓ down</span></td>
+                        </tr>
+                        <tr>
+                            <td>5</td>
+                            <td>80.9</td>
+                            <td>0.815</td>
+                            <td><span class="conf-badge high">high</span></td>
+                            <td><span class="action-badge ctr">refresh + CTR</span></td>
+                            <td>3,393</td>
+                            <td>5</td>
+                            <td><span class="trend-down">↓ down</span></td>
+                        </tr>
+                        <tr>
+                            <td>6</td>
+                            <td>80.8</td>
+                            <td>0.796</td>
+                            <td><span class="conf-badge high">high</span></td>
+                            <td><span class="action-badge ctr">refresh + CTR</span></td>
+                            <td>5,811</td>
+                            <td>14</td>
+                            <td><span class="trend-down">↓ down</span></td>
+                        </tr>
+                        <tr>
+                            <td>7</td>
+                            <td>80.6</td>
+                            <td>0.846</td>
+                            <td><span class="conf-badge high">high</span></td>
+                            <td><span class="action-badge ctr">refresh + CTR</span></td>
+                            <td>1,622</td>
+                            <td>20</td>
+                            <td><span class="trend-down">↓ down</span></td>
+                        </tr>
+                        <tr>
+                            <td>8</td>
+                            <td>80.4</td>
+                            <td>0.835</td>
+                            <td><span class="conf-badge high">high</span></td>
+                            <td><span class="action-badge ctr">refresh + CTR</span></td>
+                            <td>2,621</td>
+                            <td>10</td>
+                            <td><span class="trend-down">↓ down</span></td>
+                        </tr>
+                        <tr>
+                            <td>9</td>
+                            <td>80.4</td>
+                            <td>0.843</td>
+                            <td><span class="conf-badge high">high</span></td>
+                            <td><span class="action-badge ctr">refresh + CTR</span></td>
+                            <td>1,597</td>
+                            <td>5</td>
+                            <td><span class="trend-down">↓ down</span></td>
+                        </tr>
+                        <tr>
+                            <td>10</td>
+                            <td>80.3</td>
+                            <td>0.844</td>
+                            <td><span class="conf-badge high">high</span></td>
+                            <td><span class="action-badge refresh">refresh</span></td>
+                            <td>3,867</td>
+                            <td>5</td>
+                            <td><span class="trend-down">↓ down</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="queue-note">
+                <p>
+                    <strong>How to use this queue:</strong> Start with high-confidence rows at the top.
+                    Use the action code to guide your review focus (CTR review → check title/meta description;
+                    engagement review → check content quality/depth). The reason codes in the full CSV
+                    explain exactly which signals triggered each recommendation.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ======================== REPRODUCIBILITY ======================== -->
+    <section class="section" id="reproducibility">
+        <div class="container">
+            <h2 class="section-title"><span class="section-num">07</span>Reproducibility</h2>
+            <div class="content-grid">
+                <div class="text-col">
+                    <h3>Run from a Fresh Clone</h3>
+                    <div class="code-block">
+<pre><span class="cmd-comment"># Clone and install</span>
+git clone https://github.com/sainiojas/flyrank-ml-internship-starter.git
+cd flyrank-ml-internship-starter
+pip install -r requirements.txt
+
+<span class="cmd-comment"># Run the full pipeline</span>
+python scripts/run_all.py
+
+<span class="cmd-comment"># Outputs:</span>
+<span class="cmd-comment">#   outputs/refresh_queue.csv     — ranked queue</span>
+<span class="cmd-comment">#   outputs/model_report.md       — text report</span>
+<span class="cmd-comment">#   outputs/model_results.json    — structured metrics</span>
+<span class="cmd-comment">#   outputs/charts/               — SVG visualizations</span></pre>
+                    </div>
+                </div>
+                <div class="text-col">
+                    <h3>Key Files</h3>
+                    <table class="method-table">
+                        <tbody>
+                            <tr><td><code>scripts/01_prepare_features.py</code></td><td>Feature engineering</td></tr>
+                            <tr><td><code>scripts/02_baseline_score.py</code></td><td>Rule-based baseline</td></tr>
+                            <tr><td><code>scripts/03_train_model.py</code></td><td>Model training + evaluation</td></tr>
+                            <tr><td><code>scripts/04_evaluate_and_export.py</code></td><td>Queue assembly + charts</td></tr>
+                            <tr><td><code>scripts/ml_utils.py</code></td><td>Shared utilities + constants</td></tr>
+                            <tr><td><code>work/notebooks/capstone.ipynb</code></td><td>End-to-end analysis notebook</td></tr>
+                        </tbody>
+                    </table>
+                    <h3>Environment</h3>
+                    <p>
+                        Python 3.14 · pandas 3.0 · scikit-learn 1.9 · numpy 2.5 · matplotlib 3.11 · reportlab 5.0
+                    </p>
+                    <p>Random seed: <code>42</code> throughout all scripts.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ======================== ACKNOWLEDGMENTS ======================== -->
+    <section class="section section-alt" id="acknowledgments">
+        <div class="container">
+            <h2 class="section-title"><span class="section-num">08</span>Acknowledgments</h2>
+            <p>
+                Built on the <a href="https://flyrank.ai" target="_blank" rel="noopener">FlyRank</a>
+                ML Internship dataset (warehouse release v20260703). The anonymized starter dataset
+                and pipeline framework were provided as part of the internship program. All analysis,
+                modeling, and interpretation are the author's own work.
+            </p>
+            <p>
+                This research paper was deployed as a static page via
+                <a href="https://pages.github.com" target="_blank" rel="noopener">GitHub Pages</a>.
+            </p>
+        </div>
+    </section>
+
+    <!-- ======================== FOOTER ======================== -->
+    <footer class="site-footer">
+        <div class="container">
+            <p>
+                Content Refresh Opportunity Scoring — FlyRank ML Internship 2026
+                <span class="dot">·</span>
+                <a href="https://github.com/sainiojas/flyrank-ml-internship-starter" target="_blank" rel="noopener">
+                    View on GitHub
+                </a>
+            </p>
+        </div>
+    </footer>
+
+    <script src="js/charts.js"></script>
+</body>
+</html>

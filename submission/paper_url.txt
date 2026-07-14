@@ -1,1 +1,1 @@
-PASTE-YOUR-DEPLOYED-PAPER-URL-HERE
+https://sainiojas.github.io/flyrank-ml-internship-starter/
